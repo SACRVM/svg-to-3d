@@ -35,7 +35,9 @@ any 3D tool already sorted and prints as-is.
   so the [Vectorizer](https://github.com/SACRVM/vectorizer)'s *Copy* lands
   here directly.
 - **Out:** GLB (binary glTF, with colours), OBJ, STL (binary) — or the
-  flattened, cleaned-up SVG.
+  flattened, cleaned-up SVG. Every export asks where to save.
+- **Remembers** your settings between sessions; Ctrl+O opens, Ctrl+S saves
+  the GLB; credits and licences sit behind the © button.
 
 ## Install on a desktop
 

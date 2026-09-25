@@ -20,22 +20,25 @@ app-svg-to-3d .s3-grid {
 }
 app-svg-to-3d .s3-outline-opts { display: flex; flex-direction: column; gap: 0.75rem; }
 app-svg-to-3d .s3-outline-opts[hidden] { display: none; }
-app-svg-to-3d .s3-note {
-    margin: 0;
-    font-size: 0.72rem;
-    line-height: 1.5;
-    color: var(--text-muted);
-}
 
 /* ---- viewport ---- */
 app-svg-to-3d .s3-view { width: 100%; height: 100%; min-height: 0; }
 app-svg-to-3d .s3-canvas { position: absolute; inset: 0; }
 app-svg-to-3d .s3-view:not(.has-model) .s3-canvas { visibility: hidden; }
+/* The empty state is a drop zone: the wrapper lets clicks through to the
+   viewport around it, the zone itself takes them. */
 app-svg-to-3d .s3-empty {
     position: absolute;
     inset: 0;
+    display: flex;
+    align-items: center;
     justify-content: center;
+    padding: 16px;
     pointer-events: none;
+}
+app-svg-to-3d .s3-empty sac-drop-zone {
+    width: min(320px, 100%);
+    pointer-events: auto;
 }
 app-svg-to-3d .s3-view.has-model .s3-empty { display: none; }
 app-svg-to-3d .s3-view.dragover {

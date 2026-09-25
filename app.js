@@ -12,9 +12,9 @@
  *              the Three.js viewer and the exporters. Three.js arrives from
  *              jsDelivr's +esm build, so no importmap is needed on a host.
  *
- * Layout: the app's own <sac-nav> (Open, GLB, OBJ, STL, SVG, Reset view,
- * Help), a .sidebar in a <sac-split>, the 3D viewport beside it. On a phone
- * the nav adopts the sidebar as its drawer.
+ * Layout: the app's own <sac-nav> (Open · GLB · More ▾ [OBJ, STL, SVG] ·
+ * Reset view · Credits · Help), a .sidebar in a <sac-split>, the 3D viewport
+ * beside it. On a phone the nav adopts the sidebar as its drawer.
  */
 (function () {
     const BASE = sac.app.base();
@@ -30,16 +30,20 @@
             this.innerHTML = `
 <sac-nav brand="SVG TO 3D" brand-icon="shapes" brand-href="#/" host-nav="wide">
     <div slot="toolbar" class="toolbar">
-        <button type="button" class="btn primary s3-open" title="Open an SVG">
-            <sac-icon name="document"></sac-icon> Open
+        <button type="button" class="btn s3-open" title="Open an SVG (Ctrl+O)">
+            <sac-icon name="folder"></sac-icon> Open
         </button>
-        <button type="button" class="btn primary s3-export" data-format="glb" title="Save as GLB (binary glTF)" disabled>
+        <button type="button" class="btn primary s3-glb" data-overflow="never" title="Save as GLB — binary glTF (Ctrl+S)" disabled>
             <sac-icon name="download"></sac-icon> GLB
         </button>
-        <button type="button" class="btn s3-export" data-format="obj" title="Save as OBJ" disabled>OBJ</button>
-        <button type="button" class="btn s3-export" data-format="stl" title="Save as STL (binary)" disabled>STL</button>
-        <button type="button" class="btn s3-export" data-format="svg" title="Save the flattened, optimised SVG" disabled>SVG</button>
+        <sac-menu class="s3-formats">
+            <button slot="trigger" type="button" class="btn s3-more" title="More formats" disabled>More <sac-icon name="chevron-down"></sac-icon></button>
+            <button data-action="obj">OBJ</button>
+            <button data-action="stl">STL (binary)</button>
+            <button data-action="svg">SVG (flattened)</button>
+        </sac-menu>
         <button type="button" class="nav-icon-btn s3-reset" title="Reset view"><sac-icon name="fit"></sac-icon></button>
+        <button type="button" class="nav-icon-btn s3-credits" title="Credits &amp; licences"><sac-icon name="copyright"></sac-icon></button>
         <button type="button" class="nav-icon-btn s3-help-btn" title="Help"><sac-icon name="info"></sac-icon></button>
     </div>
 </sac-nav>
@@ -51,49 +55,48 @@
         <div class="sidebar fill s3-panel" slot="start">
             <sac-section title="Size">
                 <div class="s3-grid">
-                    <div><label for="s3-w">Width</label><input id="s3-w" class="s3-w" type="number" step="0.1" min="0" value="1"></div>
+                    <div><label for="s3-w">Width</label><input id="s3-w" class="s3-w" type="number" step="0.1" min="0" value="1" data-keep="width"></div>
                     <div><label for="s3-h">Height</label><input id="s3-h" class="s3-h" type="number" step="0.1" min="0" value=""></div>
-                    <div><label for="s3-t">Thickness</label><input id="s3-t" class="s3-t" type="number" step="0.01" min="0" value="0.1"></div>
-                    <div><label for="s3-e">Elevation</label><input id="s3-e" class="s3-e" type="number" step="0.1" value="0"></div>
+                    <div><label for="s3-t">Thickness</label><input id="s3-t" class="s3-t" type="number" step="0.01" min="0" value="0.1" data-keep="thickness"></div>
+                    <div><label for="s3-e">Elevation</label><input id="s3-e" class="s3-e" type="number" step="0.1" value="0" data-keep="elevation"></div>
                 </div>
-                <p class="s3-note">Units are yours — glTF reads them as metres.</p>
             </sac-section>
 
             <sac-section title="Geometry">
-                <sac-toggle class="s3-fill" label="Fill faces" checked></sac-toggle>
-                <sac-toggle class="s3-outline" label="Outline edges"></sac-toggle>
+                <sac-toggle class="s3-fill" label="Fill faces" checked data-keep="fill"></sac-toggle>
+                <sac-toggle class="s3-outline" label="Outline edges" data-keep="outline"></sac-toggle>
                 <div class="s3-outline-opts" hidden>
                     <div>
                         <label for="s3-ow">Outline width (SVG units)</label>
-                        <input id="s3-ow" class="s3-ow" type="number" step="0.5" min="0.1" value="4">
+                        <input id="s3-ow" class="s3-ow" type="number" step="0.5" min="0.1" value="4" data-keep="outlineWidth">
                     </div>
                     <div>
                         <label>Outline align</label>
-                        <sac-segmented-control class="s3-align" value="middle">
+                        <sac-segmented-control class="s3-align" value="middle" data-keep="outlineAlign">
                             <button data-value="inset">Inset</button>
                             <button data-value="middle">Middle</button>
                             <button data-value="outset">Outset</button>
                         </sac-segmented-control>
                     </div>
                 </div>
-                <sac-toggle class="s3-upright" label="Upright (stand it up)"></sac-toggle>
+                <sac-toggle class="s3-upright" label="Upright" data-keep="upright"></sac-toggle>
                 <div class="s3-grid">
-                    <div><label for="s3-ry">Rotate Y (°)</label><input id="s3-ry" class="s3-ry" type="number" step="15" value="0"></div>
+                    <div><label for="s3-ry">Rotate Y (°)</label><input id="s3-ry" class="s3-ry" type="number" step="15" value="0" data-keep="rotateY"></div>
                 </div>
-                <sac-toggle class="s3-center" label="Center at origin" checked></sac-toggle>
+                <sac-toggle class="s3-center" label="Center at origin" checked data-keep="center"></sac-toggle>
             </sac-section>
 
             <sac-section title="Quality">
-                <sac-slider class="s3-flat" label="Curve tolerance (lower = smoother)" min="0.1" max="5" step="0.1" value="0.5"></sac-slider>
-                <sac-slider class="s3-red" label="Vertex reduction" min="0" max="2" step="0.1" value="0"></sac-slider>
+                <sac-slider class="s3-flat" label="Curve tolerance" min="0.1" max="5" step="0.1" value="0.5" data-keep="flatness"></sac-slider>
+                <sac-slider class="s3-red" label="Vertex reduction" min="0" max="2" step="0.1" value="0" data-keep="reduction"></sac-slider>
                 <div>
                     <label for="s3-gap">Layer stacking (0 = auto)</label>
-                    <input id="s3-gap" class="s3-gap" type="number" step="0.001" min="0" value="0">
+                    <input id="s3-gap" class="s3-gap" type="number" step="0.001" min="0" value="0" data-keep="layerGap">
                 </div>
             </sac-section>
 
             <sac-section title="Preview">
-                <sac-segmented-control class="s3-mode" value="solid">
+                <sac-segmented-control class="s3-mode" value="solid" data-keep="preview">
                     <button data-value="solid">Solid</button>
                     <button data-value="wire">Wireframe</button>
                 </sac-segmented-control>
@@ -102,10 +105,9 @@
 
         <div class="viewport s3-view" slot="end">
             <div class="s3-canvas"></div>
-            <div class="empty-state s3-empty">
-                <sac-icon name="shapes"></sac-icon>
-                <b>Drop an SVG here, click Open, or paste one</b>
-                <p>Logos, icons, lettering — every filled shape becomes a solid.</p>
+            <div class="app-drop s3-empty">
+                <sac-drop-zone accept=".svg,image/svg+xml" label="Drop an SVG" hint="or click to open"
+                               touch-label="Open an SVG" touch-hint=""></sac-drop-zone>
             </div>
             <sac-hud class="s3-hud" position="bottom-left"></sac-hud>
             <div class="s3-busy" hidden><sac-spinner label="Working"></sac-spinner><span class="s3-busy-label">Loading 3D engine…</span></div>
@@ -122,17 +124,23 @@
         <ol>
             <li><b>Open</b>, drop or paste an <b>.svg</b> — paths, rects, circles, ellipses, polygons, lines.
                 A photo or PNG is not a vector: trace it into an SVG first (the Vectorizer app does that).</li>
-            <li>Set the <b>width</b> (or height — the other follows the aspect) and the <b>thickness</b>.</li>
+            <li>Set the <b>width</b> (or height — the other follows the aspect) and the <b>thickness</b>.
+                Units are yours: GLB / glTF read them as metres, OBJ and STL leave them to the importer.
+                <b>Elevation</b> lifts the base off the ground.</li>
             <li><b>Outline edges</b> adds a band along every contour (stroke colour if the SVG has one).
                 In the fill colour it merges with the fill into one body; in another colour it is cut out
                 of the fill, so the two touch without overlapping.
                 <b>Upright</b> stands the model up facing +Z; <b>Rotate Y</b> turns it.</li>
-            <li><b>Curve tolerance</b> and <b>vertex reduction</b> trade detail for triangle count.
-                <b>Layer stacking</b> lifts each later shape a hair so overlapping colours never flicker.</li>
-            <li>Save as <b>GLB</b> (with colours), <b>OBJ</b> or <b>STL</b> (geometry only, e.g. for printing).
-                <b>SVG</b> saves the flattened, cleaned-up drawing.</li>
+            <li><b>Curve tolerance</b> (lower = smoother) and <b>vertex reduction</b> trade detail for
+                triangle count. <b>Layer stacking</b> lifts each later shape a hair so overlapping colours
+                never flicker; 0 picks the step automatically.</li>
+            <li>Save as <b>GLB</b> (with colours, Ctrl+S); <b>More</b> has <b>OBJ</b>, <b>STL</b> (geometry
+                only, e.g. for printing) and <b>SVG</b> — the flattened, cleaned-up drawing. Every export asks
+                where to save.</li>
         </ol>
-        <p>Drag to orbit, right-drag to pan, wheel to zoom.</p>
+        <p>Drag to orbit, right-drag to pan, wheel to zoom; the fit button resets the view.
+           Ctrl+O opens a file. Your settings are remembered. Credits &amp; licences sit behind the ©
+           button.</p>
     </div>
 </sac-window>
 `;
@@ -148,7 +156,9 @@
             this._hud = $(".s3-hud");
             this._busy = $(".s3-busy");
             this._busyLabel = $(".s3-busy-label");
-            this._exportBtns = [...this.querySelectorAll(".s3-export")];
+            this._glbBtn = $(".s3-glb");
+            this._moreBtn = $(".s3-more");
+            this._ready = false;     // a model with at least one mesh exists
             this.ui = {
                 w: $(".s3-w"), h: $(".s3-h"), t: $(".s3-t"), e: $(".s3-e"),
                 fill: $(".s3-fill"), outline: $(".s3-outline"), outlineOpts: $(".s3-outline-opts"),
@@ -175,12 +185,16 @@
             this._engineReady = import(ENGINE).then((engine) => {
                 this._engine = engine;
                 this._viewer = engine.createViewer(this.querySelector(".s3-canvas"));
+                // A remembered "Wireframe" was replayed before the viewer existed.
+                this._viewer.setWireframe(this.ui.mode.value === "wire");
                 return engine;
             }).catch((err) => {
                 console.error("[svg-to-3d] could not load the 3D engine:", err);
                 sac.toast?.("The 3D engine did not load — check the connection.", { kind: "error", duration: 0 });
                 throw err;
             });
+
+            this._restoreSettings();
         }
 
         onUnmount() {
@@ -196,8 +210,15 @@
         _setVisible(on) {
             if (on === !!this._visible) return;
             this._visible = on;
-            if (on) { document.addEventListener("paste", this._onPaste); this._viewer?.resize(); }
-            else document.removeEventListener("paste", this._onPaste);
+            if (on) {
+                document.addEventListener("paste", this._onPaste);
+                this._viewer?.resize();
+                this._offFileKeys = this._registerFileKeys(() => { if (this._ready) this._export("glb"); });
+            } else {
+                document.removeEventListener("paste", this._onPaste);
+                this._offFileKeys?.();
+                this._offFileKeys = null;
+            }
         }
 
         /* --------------------------------------------------------- wiring -- */
@@ -210,7 +231,9 @@
         _wire() {
             const ui = this.ui;
             this.querySelector(".s3-open").addEventListener("click", () => this._open());
-            this._exportBtns.forEach((b) => b.addEventListener("click", () => this._export(b.dataset.format)));
+            this._glbBtn.addEventListener("click", () => this._export("glb"));
+            this.querySelector(".s3-formats").addEventListener("sac:select", (e) => this._export(e.detail.action));
+            this.querySelector(".s3-credits").addEventListener("click", () => this._about());
             this.querySelector(".s3-reset").addEventListener("click", () => this._viewer?.resetView());
             this.querySelector(".s3-help-btn").addEventListener("click", () => this.querySelector(".s3-help-win").open());
 
@@ -231,9 +254,11 @@
             ["dragleave", "drop"].forEach((ev) =>
                 view.addEventListener(ev, (e) => { e.preventDefault(); view.classList.remove("dragover"); }));
             view.addEventListener("drop", (e) => {
+                if (e.composedPath().some((n) => n.tagName === "SAC-DROP-ZONE")) return;   // the zone reports its own
                 const file = e.dataTransfer?.files?.[0];
                 if (file) this._loadFile(file);
             });
+            this._wireDropZone((file) => this._loadFile(file));
         }
 
         _syncAspect(from) {
@@ -340,13 +365,23 @@
                 `<b>${esc(this._name)}</b><br>` +
                 `${stats.meshes} mesh${stats.meshes === 1 ? "" : "es"} · ${stats.layers} colour${stats.layers === 1 ? "" : "s"} · ${Math.round(stats.triangles).toLocaleString()} tris<br>` +
                 `${fmt(x)} × ${fmt(y)} × ${fmt(z)} units`;
-            const ready = stats.meshes > 0;
-            this._exportBtns.forEach((b) => { b.disabled = b.dataset.format === "svg" ? !this._parsed : !ready; });
+            this._syncExports(stats.meshes > 0);
+        }
+
+        /** GLB, OBJ, STL need meshes; the flattened SVG only a parsed drawing. */
+        _syncExports(ready) {
+            this._ready = ready;
+            this._glbBtn.disabled = !ready;
+            this._moreBtn.disabled = !this._parsed;
+            for (const b of this.querySelectorAll(".s3-formats [data-action]")) {
+                b.disabled = b.dataset.action === "svg" ? !this._parsed : !ready;
+            }
         }
 
         async _export(format) {
             const engine = this._engine;
             if (!engine || !this._parsed?.bounds) return;
+            if (format !== "svg" && !this._ready) return;
             let blob, ext;
             try {
                 if (format === "glb") { blob = await engine.exportGLB(this._model); ext = ".glb"; }
@@ -366,6 +401,83 @@
                 console.error("[svg-to-3d] save failed:", err);
                 sac.toast?.("Saving failed.", { kind: "error" });
             }
+        }
+
+        /* ------------------------------------------------ the app shell ---- *
+         * Shared by the four DREAM-TOOLS-born apps (vectorizer, background-
+         * remover, mesh-optimizer, svg-to-3d) — keep the copies in step.
+         *   · settings: every control with data-keep is remembered in
+         *     context.fs ("settings") and restored by replaying its event;
+         *   · credits: sac.about from the manifest (notices included);
+         *   · the empty state is a sac-drop-zone whose click goes through
+         *     context.files (the host's file space), not the device picker.
+         * ------------------------------------------------------------------ */
+
+        _keepValue(el) {
+            return el.tagName === "SAC-TOGGLE" ? el.checked : el.value;
+        }
+
+        async _restoreSettings() {
+            let saved = null;
+            try { saved = await this._ctx.fs?.read("settings", null); } catch { saved = null; }
+            if (saved && typeof saved === "object") {
+                for (const el of this.querySelectorAll("[data-keep]")) {
+                    const key = el.dataset.keep;
+                    if (!(key in saved)) continue;
+                    const v = saved[key];
+                    const fire = (type, value) => el.dispatchEvent(new CustomEvent(type, { detail: { value }, bubbles: true }));
+                    if (el.tagName === "SAC-TOGGLE") { el.checked = !!v; fire("sac:change", !!v); }
+                    else if (el.tagName === "INPUT") { el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); }
+                    else if (el.tagName === "SAC-SLIDER") { el.value = String(v); fire("sac:input", String(v)); fire("sac:change", String(v)); }
+                    else { el.value = String(v); fire("sac:change", String(v)); }
+                }
+            }
+            // Watch only after restoring, so the replay above does not write back.
+            const save = () => {
+                clearTimeout(this._keepTimer);
+                this._keepTimer = setTimeout(() => {
+                    const out = {};
+                    for (const el of this.querySelectorAll("[data-keep]")) out[el.dataset.keep] = this._keepValue(el);
+                    Promise.resolve(this._ctx.fs?.write("settings", out)).catch(() => {});
+                }, 400);
+            };
+            for (const el of this.querySelectorAll("[data-keep]")) {
+                for (const type of ["sac:change", "sac:input", "input"]) el.addEventListener(type, save);
+            }
+        }
+
+        async _about() {
+            if (!this._manifest) {
+                this._manifest = this._ctx.manifest
+                    || await fetch(BASE + "app.json").then((r) => r.json()).catch(() => null);
+            }
+            if (sac.about) sac.about.open(this._manifest || { name: this.tagName.toLowerCase() });
+        }
+
+        _wireDropZone(onFile) {
+            const wrap = this.querySelector(".app-drop");
+            const zone = wrap.querySelector("sac-drop-zone");
+            // Click / Enter / Space open through context.files, like the Open button.
+            const intercept = (e) => {
+                if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+                if (!e.composedPath().includes(zone)) return;
+                e.preventDefault();
+                e.stopPropagation();
+                this._open();
+            };
+            wrap.addEventListener("click", intercept, true);
+            wrap.addEventListener("keydown", intercept, true);
+            zone.addEventListener("sac:files", (e) => { const f = e.detail.files[0]; if (f) onFile(f); });
+            zone.addEventListener("sac:rejected", () => sac.toast?.("That file type does not open here.", { kind: "warn" }));
+        }
+
+        /** Ctrl+O / Ctrl+S — only while the app is on screen. */
+        _registerFileKeys(saveFn) {
+            const offs = [
+                sac.hotkeys.register("mod+o", () => this._open(), { group: "File", description: "Open" }),
+                sac.hotkeys.register("mod+s", () => saveFn(), { group: "File", description: "Save / export" }),
+            ];
+            return () => offs.forEach((off) => off());
         }
     }
 
