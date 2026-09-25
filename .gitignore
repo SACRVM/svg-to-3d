@@ -8,6 +8,7 @@ Thumbs.db
 .firepit/inbox/
 .firepit/runs/
 .firepit/knowledge.db*
+.firepit/artifacts.json
 !.firepit/config.json
 .claude/settings.local.json
 .claude/*.lock
