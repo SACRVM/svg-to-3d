@@ -38,9 +38,9 @@
         </button>
         <sac-menu class="s3-formats">
             <button slot="trigger" type="button" class="btn s3-more" title="More formats" disabled>More <sac-icon name="chevron-down"></sac-icon></button>
-            <button data-action="obj">OBJ</button>
-            <button data-action="stl">STL (binary)</button>
-            <button data-action="svg">SVG (flattened)</button>
+            <button data-action="obj"><sac-icon name="download"></sac-icon> Save as OBJ</button>
+            <button data-action="stl"><sac-icon name="download"></sac-icon> Save as STL</button>
+            <button data-action="svg"><sac-icon name="download"></sac-icon> Save as SVG (flattened)</button>
         </sac-menu>
         <button type="button" class="nav-icon-btn s3-reset" title="Reset view"><sac-icon name="fit"></sac-icon></button>
         <button type="button" class="nav-icon-btn s3-credits" title="Credits &amp; licences"><sac-icon name="copyright"></sac-icon></button>
