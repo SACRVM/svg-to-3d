@@ -1,0 +1,21 @@
+{
+    "id": "svg-to-3d",
+    "name": "SVG to 3D",
+    "icon": "shapes",
+    "accent": "#10b981",
+    "description": "Turn SVG logos, icons and lettering into extruded 3D models — GLB, OBJ or STL. Runs entirely in the browser.",
+    "kind": "view",
+    "tag": "app-svg-to-3d",
+    "entry": "app.js",
+    "version": "1.0.0",
+    "notices": [
+        {
+            "title": "Three.js",
+            "text": "three.js 0.170.0 — MIT licence, © three.js authors. Loaded from jsDelivr on first use."
+        },
+        {
+            "title": "earcut",
+            "text": "Polygon triangulation based on mapbox/earcut — ISC licence, © Mapbox."
+        }
+    ]
+}
