@@ -118,12 +118,14 @@
             left="calc(50vw - 250px)" top="12vh" controls="close">
     <div class="s3-help">
         <p>Turns a vector drawing into a 3D model: every <b>filled</b> shape becomes a solid of the chosen
-           thickness, holes stay holes, each colour becomes its own group.</p>
+           thickness, holes stay holes, each free-standing form is one closed body, each colour its own group.</p>
         <ol>
             <li><b>Open</b>, drop or paste an <b>.svg</b> — paths, rects, circles, ellipses, polygons, lines.
                 A photo or PNG is not a vector: trace it into an SVG first (the Vectorizer app does that).</li>
             <li>Set the <b>width</b> (or height — the other follows the aspect) and the <b>thickness</b>.</li>
             <li><b>Outline edges</b> adds a band along every contour (stroke colour if the SVG has one).
+                In the fill colour it merges with the fill into one body; in another colour it is cut out
+                of the fill, so the two touch without overlapping.
                 <b>Upright</b> stands the model up facing +Z; <b>Rotate Y</b> turns it.</li>
             <li><b>Curve tolerance</b> and <b>vertex reduction</b> trade detail for triangle count.
                 <b>Layer stacking</b> lifts each later shape a hair so overlapping colours never flicker.</li>

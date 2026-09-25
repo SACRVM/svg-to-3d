@@ -12,14 +12,18 @@ npx serve .
 ## What it does
 
 Every filled shape of the drawing becomes a solid of the chosen thickness;
-holes stay holes. Each SVG element is its own mesh, and the meshes are grouped
-by colour, so the model arrives in any 3D tool already sorted.
+holes stay holes. Every free-standing form is ONE closed, watertight body —
+fill and outline are computed as exact 2D regions (polygon booleans), not
+stacked pieces — and the bodies are grouped by colour, so the model arrives in
+any 3D tool already sorted and prints as-is.
 
 - **Size:** set the width or the height (the other follows the aspect), the
   thickness and the elevation of the base.
 - **Geometry:** fill faces, an optional outline band along every contour
-  (inset, middle or outset; stroke colour where the SVG has one), stand it
-  upright, rotate it, centre it on the origin.
+  (inset, middle or outset; stroke colour where the SVG has one — in the fill
+  colour it merges with the fill into one body, in another colour it is cut
+  out of the fill so the two touch without overlapping), stand it upright,
+  rotate it, centre it on the origin.
 - **Quality:** curve tolerance and vertex reduction trade detail for
   triangles; layer stacking lifts each later shape a hair so overlapping
   colours never flicker.
@@ -44,6 +48,9 @@ or pick it from the App Store tab there.
   loaded from jsDelivr on first use.
 - Polygon triangulation based on [earcut](https://github.com/mapbox/earcut)
   (ISC, © Mapbox).
+- Polygon booleans and offsets: [Clipper](https://sourceforge.net/projects/jsclipper/)
+  (JavaScript port 6.4.2, Boost Software License, © Angus Johnson, JS port
+  © Timo), loaded from jsDelivr.
 
 ## License
 

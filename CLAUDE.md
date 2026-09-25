@@ -5,8 +5,11 @@ SVG → extruded 3D models (GLB / OBJ / STL) as an app built on
 SVG to World tool of DREAM TOOLS; everything specific to that game's world
 format (primitive decomposition into Box/Prism1, the .world export, material
 catalog, pivots) stayed behind. What is left is the generic core: SVG parsing,
-curve flattening, simplification, hole grouping, triangulation, outline bands
-— now emitted as real meshes.
+curve flattening, simplification, triangulation — now emitted as real
+meshes. The outline is NOT the old box-and-wedge construction (that only
+existed because the game world could hold nothing but primitives): fill and
+band are exact regions from Clipper booleans/offsets, and every free-standing
+region becomes ONE closed, watertight body.
 
 ## The shape (same as every kit app)
 
@@ -29,8 +32,15 @@ viewer, exporters).
 - **Preview = export.** Orientation and placement are baked into the vertices
   in `buildModel()`; the viewer shows exactly the group the exporters get.
 - **Carried code** (parsing, subdivision with the degenerate-chord guard,
-  shared-edge simplification, `groupPathsWithHoles`, earcut, `outlineBoxSpecs`)
-  is proven — change it deliberately, not in passing. Arcs are sampled for
+  shared-edge simplification, earcut) is proven — change it deliberately, not
+  in passing.
+- **Solids** (`fillRegion` → `bandRegion` → `bodiesOf` → `extrudePieces`):
+  fill = even-odd union of the element's contours; band = offset differences
+  (inset `F∖shrink(F,w)`, middle `grow(F,w/2)∖shrink(F,w/2)`, outset
+  `grow(F,w)∖F`, mitred, limit 4) plus open strokes for two-point lines. Same
+  colour → union, one body; different colour → `fill∖band` + band, touching,
+  never overlapping. Invariant, checked by test: every edge of every body is
+  shared by exactly two triangles. Arcs are sampled for
   real here (`sampleArc`); the original only kept their endpoints.
 - **Files go through the kit:** `context.files.open/save`, never a hand-made
   `<input type=file>` or download link.

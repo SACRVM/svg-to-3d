@@ -18,6 +18,7 @@
  * importmap is needed (a desktop host could not provide one anyway).
  */
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.170.0/+esm";
+import ClipperLib from "https://cdn.jsdelivr.net/npm/clipper-lib@6.4.2/+esm";
 import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/controls/OrbitControls.js/+esm";
 import { GLTFExporter } from "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/exporters/GLTFExporter.js/+esm";
 import { OBJExporter } from "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/exporters/OBJExporter.js/+esm";
@@ -750,87 +751,6 @@ function createNode(i, x, y) { return { i, x, y, prev: null, next: null, z: 0, p
 function signedArea(data, start, end, dim) { let sum = 0; for (let i = start, j = end - dim; i < end; i += dim) { sum += (data[j] - data[i]) * (data[i + 1] + data[j + 1]); j = i; } return sum; }
 
 /** Point-in-polygon test (ray casting) */
-function pointInPolygon(px, py, poly) {
-    let inside = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-        const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
-        if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi))
-            inside = !inside;
-    }
-    return inside;
-}
-
-/** Group subpaths into outer contours + their holes using winding direction and containment */
-function groupPathsWithHoles(shapes) {
-    if (shapes.length === 0) return [];
-
-    // 1. Calculate signed areas and absolute areas for sorting/depth
-    const processed = shapes.map((item, i) => {
-        const v = item.shape.vertices; // Accessing {vertices, winding} from subpathInfo
-        let area = 0;
-        for (let j = 0; j < v.length; j++) {
-            const next = (j + 1) % v.length;
-            area += (v[j].x * v[next].y - v[next].x * v[j].y);
-        }
-        return { item, absArea: Math.abs(area), idx: i };
-    });
-
-    // 2. Sort by absolute area (largest first)
-    processed.sort((a, b) => b.absArea - a.absArea);
-
-    const results = []; // Array of { shape, holes: [] }
-
-    // 3. Containment-based grouping
-    processed.forEach(entry => {
-        let parentIdx = -1;
-        let containers = 0;
-
-        const v = entry.item.shape.vertices;
-        const testPoints = [];
-
-        let cx = 0, cy = 0;
-
-        if (v.length >= 3) {
-            // Because PolyBool cleanly bounds edges, the midpoint of any segment is guaranteed 100% on the path border.
-            // Using a segment midpoint avoids bounding box centers which might be outside concave features.
-            testPoints.push({ x: (v[0].x + v[1].x) / 2, y: (v[0].y + v[1].y) / 2 });
-            testPoints.push({ x: (v[1].x + v[2].x) / 2, y: (v[1].y + v[2].y) / 2 });
-            testPoints.push({ x: v[0].x, y: v[0].y });
-        } else if (v.length > 0) {
-            testPoints.push(v[0]);
-        }
-
-        for (let i = 0; i < processed.length; i++) {
-            if (processed[i] === entry) continue;
-            if (processed[i].absArea > entry.absArea) {
-                const isInside = testPoints.some(pt => pointInPolygon(pt.x, pt.y, processed[i].item.shape.vertices));
-                if (isInside) {
-                    containers++;
-                    if (parentIdx === -1 || processed[i].absArea < processed[parentIdx].absArea) {
-                        parentIdx = i;
-                    }
-                }
-            }
-        }
-
-        if (containers % 2 === 0) {
-            const outer = { shape: entry.item.shape, holes: [], id: entry.idx };
-            entry.groupRef = outer;
-            results.push(outer);
-        } else {
-            if (parentIdx !== -1 && processed[parentIdx].groupRef) {
-                processed[parentIdx].groupRef.holes.push(entry.item.shape);
-            } else {
-                const outer = { shape: entry.item.shape, holes: [], id: entry.idx };
-                entry.groupRef = outer;
-                results.push(outer);
-            }
-        }
-    });
-
-    return results;
-}
-
 /** Triangulate a polygon (with holes) and return array of triangle vertex arrays */
 function triangulatePoly(outerVerts, holeShapes) {
     // Build flat coordinate array for earcut
@@ -864,128 +784,92 @@ function triangulatePoly(outerVerts, holeShapes) {
 
 
 
-/** Signed area of a 2D polygon (>0 = CCW in SVG's y-down space is CW visually; sign only used relatively) */
-function polySignedArea(v) {
-    let a = 0;
-    for (let i = 0; i < v.length; i++) { const p = v[i], q = v[(i + 1) % v.length]; a += p.x * q.y - q.x * p.y; }
-    return a / 2;
+/* =========================================================================
+   Solids — exact 2D regions (Clipper booleans + offsets), one body per
+   free-standing region. Fill and outline band are computed as REGIONS, not
+   as pieces: same colour → unioned into one body; different colour → the
+   band is cut out of the fill (the stroke is painted over it, as in SVG), so
+   the two touch but never overlap. Every body is closed and watertight.
+   ========================================================================= */
+const CS = 1000;                       // Clipper works in integers: SVG units × CS
+const CL = ClipperLib;
+const PT = CL.PolyType, CT = CL.ClipType, PFT = CL.PolyFillType;
+
+const toPath = (verts) => verts.map((v) => ({ X: Math.round(v.x * CS), Y: Math.round(v.y * CS) }));
+
+/** Boolean of two path sets (non-zero fill); `b` may be empty. */
+function clip(type, a, b = []) {
+    const c = new CL.Clipper();
+    c.AddPaths(a, PT.ptSubject, true);
+    if (b.length) c.AddPaths(b, PT.ptClip, true);
+    const out = new CL.Paths();
+    c.Execute(type, out, PFT.pftNonZero, PFT.pftNonZero);
+    return out;
 }
 
-function outlineBoxSpecs(processedShapes, opts) {
-    const T = Math.max(0.001, parseFloat(opts.width) || 4);
-    const align = opts.align || 'middle';
-    const halfW = T / 2;
-    const MAXSEC = 4;                                   // miter limit (× half-width, SVG default 4): beyond
-                                                        // this a very sharp corner is BEVELLED instead of
-                                                        // shooting the apex far out as a thin floating shard.
-    // inset/outset are NOT done by shifting each box perpendicular (that staggers the boxes at
-    // corners and can't make asymmetric rails meet — the inset/outset breakage). Instead we
-    // miter-offset the whole contour by ∓w/2 below and then build a CENTERED band on it, reusing
-    // the exact machinery that works for middle. So the band math is always centred (cOff = 0).
-    const bandOffset = align === 'inset' ? -halfW : (align === 'outset' ? halfW : 0);
+/** Grow (delta > 0) or shrink a region; mitred corners, SVG's default miter limit 4. */
+function offsetRegion(paths, delta) {
+    if (!delta) return paths;
+    const co = new CL.ClipperOffset(4, 0.25 * CS);
+    co.AddPaths(paths, CL.JoinType.jtMiter, CL.EndType.etClosedPolygon);
+    const out = new CL.Paths();
+    co.Execute(out, delta);
+    return out;
+}
 
-    const boxes = [], tris = [];
-    processedShapes.forEach(shape => {
-        if (shape.visible === false) return;
-        const color = shape.resolvedStroke || shape.resolvedColor;
-        const docIndex = shape.docIndex, layerId = shape.layerId + ' (outline)';
+/** A stroke of width 2·half along open polylines (lines have no area to offset). */
+function strokeLines(lines, half) {
+    const co = new CL.ClipperOffset(4, 0.25 * CS);
+    co.AddPaths(lines, CL.JoinType.jtMiter, CL.EndType.etOpenButt);
+    const out = new CL.Paths();
+    co.Execute(out, half);
+    return out;
+}
 
-        shape.subpaths.forEach(sub => {
-            // WELD coincident vertices — consecutive AND wrap-around. Many SVGs repeat the start
-            // point (explicit return-to-start L + a Z close → the start appears 2–3×). Removing only
-            // ONE trailing duplicate left pts[0] and pts[M-1] coincident → a ZERO-LENGTH wrap edge,
-            // whose garbage direction made dot≈0 at that one corner → misread as 90° → stuck w/2
-            // overhang (the "one un-made corner per polygon", always at the seam). Collapsing all
-            // coincident vertices makes the seam a single clean corner.
-            const WELD = 1e-3;
-            let pts = [];
-            for (const v of sub.vertices) {
-                if (!pts.length || Math.hypot(v.x - pts[pts.length - 1].x, v.y - pts[pts.length - 1].y) >= WELD) pts.push(v);
-            }
-            while (pts.length > 2 && Math.hypot(pts[pts.length - 1].x - pts[0].x, pts[pts.length - 1].y - pts[0].y) < WELD) pts.pop();
-            let M = pts.length;
-            if (M < 2) return;
+/** An element's fill region: its closed contours, holes by even-odd containment. */
+function fillRegion(shape) {
+    const closed = shape.subpaths.filter((sub) => sub.vertices.length >= 3).map((sub) => toPath(sub.vertices));
+    if (!closed.length) return [];
+    const c = new CL.Clipper();
+    c.AddPaths(closed, PT.ptSubject, true);
+    const out = new CL.Paths();
+    c.Execute(CT.ctUnion, out, PFT.pftEvenOdd, PFT.pftEvenOdd);
+    return out;
+}
 
-            // inset/outset: miter-offset the contour by bandOffset along the outward normal, then
-            // treat it exactly as a centred band. Edge directions are preserved, so all the turn
-            // angles (and thus the sharp/overhang classification) stay identical to middle.
-            if (bandOffset !== 0 && M >= 3) {
-                const aS = polySignedArea(pts) > 0 ? 1 : -1;
-                const on = [];                                   // outward normals of the original contour
-                for (let i = 0; i < M; i++) { const A = pts[i], B = pts[(i + 1) % M]; let dx = B.x - A.x, dy = B.y - A.y; const l = Math.hypot(dx, dy) || 1e-9; on.push({ x: (dy / l) * aS, y: -(dx / l) * aS }); }
-                const off = [];
-                for (let i = 0; i < M; i++) {
-                    const np = on[(i - 1 + M) % M], nc = on[i];
-                    let mx = np.x + nc.x, my = np.y + nc.y; const den = 1 + (np.x * nc.x + np.y * nc.y);
-                    if (den > 1e-4) { mx /= den; my /= den; }
-                    const ml = Math.hypot(mx, my) || 1e-9, CAP = 8; if (ml > CAP) { mx *= CAP / ml; my *= CAP / ml; }
-                    off.push({ x: pts[i].x + bandOffset * mx, y: pts[i].y + bandOffset * my });
-                }
-                pts = off;
-            }
+/** The outline band of a region, `w` wide (Clipper units), placed inset / middle / outset. */
+function bandRegion(shape, region, w, align) {
+    let band;
+    if (align === 'inset') band = clip(CT.ctDifference, region, offsetRegion(region, -w));
+    else if (align === 'outset') band = clip(CT.ctDifference, offsetRegion(region, w), region);
+    else band = clip(CT.ctDifference, offsetRegion(region, w / 2), offsetRegion(region, -w / 2));
+    // Open strokes (two-point lines, degenerate contours) have no region — stroke them directly.
+    const lines = shape.subpaths.filter((sub) => sub.vertices.length === 2).map((sub) => toPath(sub.vertices));
+    if (lines.length) band = clip(CT.ctUnion, band, strokeLines(lines, w / 2));
+    return band;
+}
 
-            const d = [];                                        // per-edge unit dir + length
-            for (let i = 0; i < M; i++) {
-                const A = pts[i], B = pts[(i + 1) % M];
-                let dx = B.x - A.x, dy = B.y - A.y; const l = Math.hypot(dx, dy) || 1e-9;
-                dx /= l; dy /= l; d.push({ x: dx, y: dy, len: l });
-            }
-            // per-vertex: overhang e[i] (≤ halfW for ≥90° corners), sharp flag, sharp-tip apex.
-            const e = new Array(M), sharp = new Array(M), apex = new Array(M);
-            for (let i = 0; i < M; i++) {
-                const dp = d[(i - 1 + M) % M], dc = d[i];
-                let dot = dp.x * dc.x + dp.y * dc.y; dot = dot > 1 ? 1 : (dot < -1 ? -1 : dot);
-                const crossZ = dp.x * dc.y - dp.y * dc.x;
-                sharp[i] = dot < 0;                                       // interior < 90° (LOCAL — winding-independent)
-                const f = Math.tan(Math.acos(dot) / 2);
-                // Sharp tips: drop the overhang (e=0); the corner triangle fills the wedge instead.
-                // ≥90° corners keep the math-derived overhang so their box outer corners meet.
-                e[i] = sharp[i] ? 0 : halfW * Math.min(isFinite(f) ? f : 1, 1);
-                // Sharp-tip apex on the LOCAL turn side sign(crossZ) — NOT the global winding — so the
-                // triangle triggers for EVERY <90° corner. coef = gap-side rail offset = (w/2)·turnSign.
-                const turnSign = crossZ >= 0 ? 1 : -1;
-                const coef = halfW * turnSign;                           // centred band (offset baked into contour)
-                const rp = { x: dp.y, y: -dp.x }, rc = { x: dc.y, y: -dc.x };   // right-hand normals
-                let mx = rp.x + rc.x, my = rp.y + rc.y; const denom = 1 + dot;
-                if (denom > 1e-4) { mx /= denom; my /= denom; }
-                const ml = Math.hypot(mx, my) || 1e-9; if (ml > MAXSEC) { mx *= MAXSEC / ml; my *= MAXSEC / ml; }
-                apex[i] = { x: pts[i].x + coef * mx, y: pts[i].y + coef * my };
-            }
-            // boxes (one per edge), extended by capped overhang at each end, centred on the contour
-            for (let i = 0; i < M; i++) {
-                const A = pts[i], B = pts[(i + 1) % M], di = d[i];
-                if (di.len < 1e-6) continue;
-                const ei = e[i], ej = e[(i + 1) % M];
-                const sX = A.x - di.x * ei, sY = A.y - di.y * ei;
-                const eX = B.x + di.x * ej, eY = B.y + di.y * ej;
-                const cx = (sX + eX) / 2, cy = (sY + eY) / 2;             // centred (offset baked into contour)
-                const boxLen = Math.hypot(eX - sX, eY - sY);
-                if (boxLen < 1e-6) continue;
-                boxes.push({ cx, cy, ux: di.x, uy: di.y, len: boxLen, width: T, color, docIndex, layerId });
-            }
-            // Sharp-convex corner fill. With overhang=0 the boxes meet at the vertex V but no
-            // longer overlap, so the corner gap is the QUADRILATERAL (V → boxOuterCorner_prev →
-            // miter apex → boxOuterCorner_cur). Filling only the outer triangle (inC,apex,outC)
-            // leaves the inner part near V open (the dark notch). Cover the whole quad as a fan
-            // from V: (V,inC,apex)+(V,apex,outC). Each tri becomes one extruded wedge.
-            for (let i = 0; i < M; i++) {
-                if (!sharp[i]) continue;                                     // e[i] = 0 here (sharp)
-                const dp = d[(i - 1 + M) % M], dc = d[i], V = pts[i];
-                const crossZ = dp.x * dc.y - dp.y * dc.x;
-                const coef = halfW * (crossZ >= 0 ? 1 : -1);                 // gap-side rail offset (centred band)
-                const rp = { x: dp.y, y: -dp.x }, rc = { x: dc.y, y: -dc.x };
-                const inC = { x: V.x + coef * rp.x, y: V.y + coef * rp.y };   // prev edge gap-side corner @ V
-                const outC = { x: V.x + coef * rc.x, y: V.y + coef * rc.y };  // cur edge gap-side corner @ V
-                const ap = apex[i], Vp = { x: V.x, y: V.y };
-                const tri2 = (a, b, c) => {
-                    const ar = Math.abs((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
-                    if (ar > 1e-6) tris.push({ a, b, c, color, docIndex, layerId });
-                };
-                tri2(Vp, inC, ap); tri2(Vp, ap, outC);
-            }
-        });
-    });
-    return { boxes, tris };
+/**
+ * Split a region into free-standing bodies: each outer ring with its own
+ * holes (islands inside holes become bodies of their own). Coordinates back
+ * in SVG units.
+ */
+function bodiesOf(region) {
+    if (!region.length) return [];
+    const c = new CL.Clipper();
+    c.AddPaths(region, PT.ptSubject, true);
+    const tree = new CL.PolyTree();
+    c.Execute(CT.ctUnion, tree, PFT.pftNonZero, PFT.pftNonZero);
+    const back = (path) => path.map((q) => ({ x: q.X / CS, y: q.Y / CS }));
+    const bodies = [];
+    const walk = (node) => {
+        for (const outer of node.Childs()) {          // outer rings
+            bodies.push({ outer: back(outer.Contour()), holes: outer.Childs().map((h) => ({ vertices: back(h.Contour()) })) });
+            for (const hole of outer.Childs()) walk(hole);   // islands inside the holes
+        }
+    };
+    walk(tree);
+    return bodies;
 }
 
 /* =========================================================================
@@ -1111,7 +995,6 @@ export function buildModel(parsed, opts) {
     const maxDoc = Math.max(0, ...shapes.map((s) => s.docIndex || 0));
     const typedGap = parseFloat(opts.layerGap);
     const gap = typedGap > 0 ? typedGap : (maxDoc > 0 ? Math.min(W * 0.001, (W * 0.01) / maxDoc) : 0);
-    const lift = gap || W * 0.001;   // the outline band stands this much proud of the fill
 
     const materials = new Map();
     const materialFor = (hex) => {
@@ -1141,37 +1024,29 @@ export function buildModel(parsed, opts) {
         stats.triangles += geo.attributes.position.count / 3;
     };
 
-    // FILL — one mesh per SVG element, holes cut by containment.
-    if (opts.fill !== false) {
-        for (const shape of shapes) {
-            const infos = shape.subpaths.filter((s) => s.vertices.length >= 3).map((sub) => ({ shape: { vertices: sub.vertices } }));
-            const pieces = groupPathsWithHoles(infos).map((g) => triangulatePoly(g.shape.vertices, g.holes));
-            const y0 = (shape.docIndex || 0) * gap;
-            addMesh(extrudePieces(pieces, scale, y0, y0 + thickness), colorHex(shape.resolvedColor), shape.name);
-        }
-    }
-
-    // OUTLINE — the band around every contour: one quad per edge plus corner
-    // wedges at sharp tips (the pieces overlap on the inside; they are not
-    // boolean-unioned). Coloured by the SVG stroke, else the fill.
-    if (opts.outline) {
-        const specs = outlineBoxSpecs(shapes, { width: opts.outlineWidth, align: opts.outlineAlign });
-        const byShape = new Map();
-        const piecesOf = (docIndex, color) => {
-            if (!byShape.has(docIndex)) byShape.set(docIndex, { color, pieces: [] });
-            return byShape.get(docIndex).pieces;
-        };
-        for (const sp of specs.boxes) {
-            const px = -sp.uy, py = sp.ux, hl = sp.len / 2, hw = sp.width / 2;
-            const c = [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([u, v]) =>
-                ({ x: sp.cx + sp.ux * hl * u + px * hw * v, y: sp.cy + sp.uy * hl * u + py * hw * v }));
-            piecesOf(sp.docIndex, sp.color).push([[c[0], c[1], c[2]], [c[0], c[2], c[3]]]);
-        }
-        for (const tr of specs.tris) piecesOf(tr.docIndex, tr.color).push([[tr.a, tr.b, tr.c]]);
-        for (const [docIndex, { color, pieces }] of byShape) {
-            const y0 = (docIndex || 0) * gap;
-            const shape = shapes.find((s) => s.docIndex === docIndex);
-            addMesh(extrudePieces(pieces, scale, y0, y0 + thickness + lift), colorHex(color), `${shape ? shape.name : "shape"} outline`);
+    // One body per free-standing region. Fill and outline are regions, not
+    // pieces: same colour → one unioned body; different colour → the band is
+    // cut out of the fill, so the two touch and never overlap.
+    const bandW = Math.max(0.001, parseFloat(opts.outlineWidth) || 4) * CS;
+    const addBodies = (region, hex, name, y0) => {
+        const bodies = bodiesOf(region);
+        bodies.forEach((body, k) => {
+            const tris = triangulatePoly(body.outer, body.holes);
+            addMesh(extrudePieces([tris], scale, y0, y0 + thickness), hex, bodies.length > 1 ? `${name} ${k + 1}` : name);
+        });
+    };
+    for (const shape of shapes) {
+        const y0 = (shape.docIndex || 0) * gap;
+        const fillHex = colorHex(shape.resolvedColor);
+        const lineHex = colorHex(shape.resolvedStroke || shape.resolvedColor);
+        const region = fillRegion(shape);
+        const band = opts.outline ? bandRegion(shape, region, bandW, opts.outlineAlign) : [];
+        const fill = opts.fill !== false ? region : [];
+        if (fill.length && band.length && fillHex === lineHex) {
+            addBodies(clip(CT.ctUnion, fill, band), fillHex, shape.name, y0);
+        } else {
+            if (fill.length) addBodies(band.length ? clip(CT.ctDifference, fill, band) : fill, fillHex, shape.name, y0);
+            if (band.length) addBodies(band, lineHex, `${shape.name} outline`, y0);
         }
     }
 
