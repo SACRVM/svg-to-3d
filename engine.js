@@ -1027,7 +1027,8 @@ export function buildModel(parsed, opts) {
     // One body per free-standing region. Fill and outline are regions, not
     // pieces: same colour → one unioned body; different colour → the band is
     // cut out of the fill, so the two touch and never overlap.
-    const bandW = Math.max(0.001, parseFloat(opts.outlineWidth) || 4) * CS;
+    // The outline width is in OUTPUT units, like the width; the regions are in SVG units.
+    const bandW = (Math.max(1e-6, parseFloat(opts.outlineWidth) || 0.01) / scale) * CS;
     const addBodies = (region, hex, name, y0) => {
         const bodies = bodiesOf(region);
         bodies.forEach((body, k) => {

@@ -24,11 +24,19 @@
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     const fmt = (n) => (Math.abs(n) >= 100 ? n.toFixed(1) : Math.abs(n) >= 1 ? n.toFixed(2) : n.toFixed(3));
 
+    // The Quality sliders are levels; the engine takes tolerances (in 0.2 % of
+    // the drawing's size — see parseSVG).
+    const CURVE_TOL = [2, 1, 0.5, 0.25, 0.1];          // Coarse … Fine
+    const REDUCTION_TOL = [0, 0.25, 0.5, 1, 2];        // Off … Max
+    const level = (el, table) => table[Math.max(0, Math.min(table.length - 1, Math.round(parseFloat(el.value) || 0)))];
+    const nearest = (table, v) => table.reduce((best, t, i) => (Math.abs(t - v) < Math.abs(table[best] - v) ? i : best), 0);
+
     class AppSvgTo3d extends sac.app.Element {
         build() {
             sac.app.styles(BASE + "app.css", CSS_ID);
             this.innerHTML = `
 <sac-nav brand="SVG TO 3D" brand-icon="shapes" brand-href="#/" host-nav="wide">
+    <div slot="context" class="s3-theme"><sac-theme-toggle></sac-theme-toggle></div>
     <div slot="toolbar" class="toolbar">
         <button type="button" class="btn s3-open" title="Open an SVG (Ctrl+O)">
             <sac-icon name="folder"></sac-icon> Open
@@ -67,8 +75,8 @@
                 <sac-toggle class="s3-outline" label="Outline edges" data-keep="outline"></sac-toggle>
                 <div class="s3-outline-opts" hidden>
                     <div>
-                        <label for="s3-ow">Outline width (SVG units)</label>
-                        <input id="s3-ow" class="s3-ow" type="number" step="0.5" min="0.1" value="4" data-keep="outlineWidth">
+                        <label for="s3-ow">Outline width</label>
+                        <input id="s3-ow" class="s3-ow" type="number" step="0.005" min="0.001" value="0.01" data-keep="outlineW">
                     </div>
                     <div>
                         <label>Outline align</label>
@@ -80,15 +88,15 @@
                     </div>
                 </div>
                 <sac-toggle class="s3-upright" label="Upright" data-keep="upright"></sac-toggle>
-                <div class="s3-grid">
-                    <div><label for="s3-ry">Rotate Y (°)</label><input id="s3-ry" class="s3-ry" type="number" step="15" value="0" data-keep="rotateY"></div>
-                </div>
+                <div><label>Rotate Y</label><sac-stepper class="s3-ry" label="Rotate Y" min="0" max="355" step="5" value="0" unit="°" data-keep="rotateY"></sac-stepper></div>
                 <sac-toggle class="s3-center" label="Center at origin" checked data-keep="center"></sac-toggle>
             </sac-section>
 
             <sac-section title="Quality">
-                <sac-slider class="s3-flat" label="Curve tolerance" min="0.1" max="5" step="0.1" value="0.5" data-keep="flatness"></sac-slider>
-                <sac-slider class="s3-red" label="Vertex reduction" min="0" max="2" step="0.1" value="0" data-keep="reduction"></sac-slider>
+                <sac-slider class="s3-flat" label="Curve detail" min="0" max="4" step="1" value="2"
+                            labels="Coarse,Low,Medium,High,Fine" data-keep="curveDetail"></sac-slider>
+                <sac-slider class="s3-red" label="Vertex reduction" min="0" max="4" step="1" value="0"
+                            labels="Off,Light,Medium,Strong,Max" data-keep="reductionLevel"></sac-slider>
                 <div>
                     <label for="s3-gap">Layer stacking (0 = auto)</label>
                     <input id="s3-gap" class="s3-gap" type="number" step="0.001" min="0" value="0" data-keep="layerGap">
@@ -127,12 +135,14 @@
             <li>Set the <b>width</b> (or height — the other follows the aspect) and the <b>thickness</b>.
                 Units are yours: GLB / glTF read them as metres, OBJ and STL leave them to the importer.
                 <b>Elevation</b> lifts the base off the ground.</li>
-            <li><b>Outline edges</b> adds a band along every contour (stroke colour if the SVG has one).
+            <li><b>Outline edges</b> adds a band along every contour (stroke colour if the SVG has one);
+                its <b>width</b> is in the same units as the model's width.
                 In the fill colour it merges with the fill into one body; in another colour it is cut out
                 of the fill, so the two touch without overlapping.
                 <b>Upright</b> stands the model up facing +Z; <b>Rotate Y</b> turns it.</li>
-            <li><b>Curve tolerance</b> (lower = smoother) and <b>vertex reduction</b> trade detail for
-                triangle count. <b>Layer stacking</b> lifts each later shape a hair so overlapping colours
+            <li><b>Curve detail</b> sets how finely curves and arcs are sampled (Fine = smoothest, most
+                triangles); <b>vertex reduction</b> thins out nearly-straight runs of points. Both trade detail
+                for triangle count. <b>Layer stacking</b> lifts each later shape a hair so overlapping colours
                 never flicker; 0 picks the step automatically.</li>
             <li>Save as <b>GLB</b> (with colours, Ctrl+S); <b>More</b> has <b>OBJ</b>, <b>STL</b> (geometry
                 only, e.g. for printing) and <b>SVG</b> — the flattened, cleaned-up drawing. Every export asks
@@ -151,6 +161,8 @@
             const $ = (s) => this.querySelector(s);
             const nav = $("sac-nav");
             if (nav) nav.host = context.host;
+            // Standalone the app brings its own theme switch; on a desktop the host has one.
+            if (context.host) $(".s3-theme")?.remove();
 
             this._view = $(".s3-view");
             this._hud = $(".s3-hud");
@@ -241,7 +253,8 @@
             // Width and height are one size: typing one derives the other from the aspect.
             ui.w.addEventListener("input", () => { this._syncAspect("w"); rebuild(); });
             ui.h.addEventListener("input", () => { this._syncAspect("h"); rebuild(); });
-            for (const el of [ui.t, ui.e, ui.ow, ui.ry, ui.gap]) el.addEventListener("input", rebuild);
+            for (const el of [ui.t, ui.e, ui.ow, ui.gap]) el.addEventListener("input", rebuild);
+            this._on(ui.ry, "sac:change", rebuild);
             for (const el of [ui.fill, ui.upright, ui.center, ui.align]) this._on(el, "sac:change", rebuild);
             this._on(ui.outline, "sac:change", (v) => { ui.outlineOpts.hidden = !v; rebuild(); });
             this._on(ui.flat, "sac:input", () => this._scheduleReparse());
@@ -304,7 +317,7 @@
         async _load(svgText, name) {
             this._svg = svgText;
             this._name = name || "model";
-            this.ui.w.value = this.ui.w.value && parseFloat(this.ui.w.value) > 0 ? this.ui.w.value : "1";
+            if (!(parseFloat(this.ui.w.value) > 0)) this.ui.w.value = "1";
             await this._reparse({ reframe: true, fitHeight: true });
         }
 
@@ -328,7 +341,7 @@
             this._busyLabel.textContent = "Building…";
             await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
             try {
-                this._parsed = engine.parseSVG(this._svg, { flatness: this.ui.flat.value, reduction: this.ui.red.value });
+                this._parsed = engine.parseSVG(this._svg, { flatness: level(this.ui.flat, CURVE_TOL), reduction: level(this.ui.red, REDUCTION_TOL) });
                 if (!this._parsed.bounds) {
                     sac.toast?.("No shapes found in that SVG.", { kind: "warn" });
                     this._busy.hidden = true;
@@ -420,6 +433,7 @@
         async _restoreSettings() {
             let saved = null;
             try { saved = await this._ctx.fs?.read("settings", null); } catch { saved = null; }
+            if (saved && typeof saved === "object" && this._migrateSettings) saved = this._migrateSettings(saved);
             if (saved && typeof saved === "object") {
                 for (const el of this.querySelectorAll("[data-keep]")) {
                     const key = el.dataset.keep;
@@ -428,6 +442,7 @@
                     const fire = (type, value) => el.dispatchEvent(new CustomEvent(type, { detail: { value }, bubbles: true }));
                     if (el.tagName === "SAC-TOGGLE") { el.checked = !!v; fire("sac:change", !!v); }
                     else if (el.tagName === "INPUT") { el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); }
+                    else if (el.tagName === "SAC-STEPPER") { el.value = Number(v); fire("sac:change", Number(v)); }
                     else if (el.tagName === "SAC-SLIDER") { el.value = String(v); fire("sac:input", String(v)); fire("sac:change", String(v)); }
                     else { el.value = String(v); fire("sac:change", String(v)); }
                 }
@@ -444,6 +459,18 @@
             for (const el of this.querySelectorAll("[data-keep]")) {
                 for (const type of ["sac:change", "sac:input", "input"]) el.addEventListener(type, save);
             }
+        }
+
+        /** Settings written by 1.2.x: raw tolerances become levels; the outline
+         *  width was in SVG units, which cannot be converted without the drawing,
+         *  so it falls back to the default. */
+        _migrateSettings(saved) {
+            const out = { ...saved };
+            if ("flatness" in out && !("curveDetail" in out)) out.curveDetail = nearest(CURVE_TOL, parseFloat(out.flatness) || 0.5);
+            if ("reduction" in out && !("reductionLevel" in out)) out.reductionLevel = nearest(REDUCTION_TOL, parseFloat(out.reduction) || 0);
+            if ("rotateY" in out) out.rotateY = ((Math.round((parseFloat(out.rotateY) || 0) / 5) * 5) % 360 + 360) % 360;
+            delete out.flatness; delete out.reduction; delete out.outlineWidth;
+            return out;
         }
 
         async _about() {
