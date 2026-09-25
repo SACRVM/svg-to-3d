@@ -26,10 +26,10 @@ app-svg-to-3d .s3-view { width: 100%; height: 100%; min-height: 0; }
 app-svg-to-3d .s3-canvas { position: absolute; inset: 0; }
 app-svg-to-3d .s3-view:not(.has-model) .s3-canvas { visibility: hidden; }
 /* ---- empty state: the shared .app-drop block (same in all four DREAM
-   TOOLS-born apps — keep it identical). The zone lies on --viewport-bg,
-   which is black in BOTH themes; the zone carries the kit's .on-viewport
-   class, which re-seeds its ink and glass for a dark ground. The wrapper
-   clears the top label row and the bottom HUD. ---- */
+   TOOLS-born apps — keep it identical). The zone carries class
+   "on-viewport" (kit 2.12.0), so it reads dark on --viewport-bg in both
+   themes; its glass is made opaque so the scene does not show through.
+   The wrapper clears the top label row and the bottom HUD. ---- */
 .app-drop {
     position: absolute;
     inset: 0;
@@ -41,6 +41,7 @@ app-svg-to-3d .s3-view:not(.has-model) .s3-canvas { visibility: hidden; }
     pointer-events: none;
 }
 .app-drop sac-drop-zone {
+    --glass: color-mix(in srgb, var(--lift) 5%, var(--viewport-bg));
     --drop-zone-min-height: 120px;
     width: min(320px, 100%);
     pointer-events: auto;

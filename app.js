@@ -41,7 +41,7 @@
         <button type="button" class="btn s3-open" title="Open an SVG (Ctrl+O)">
             <sac-icon name="folder"></sac-icon> Open
         </button>
-        <button type="button" class="btn primary s3-glb" title="Save as GLB — binary glTF (Ctrl+S)" disabled>
+        <button type="button" class="btn primary s3-glb" data-overflow="never" title="Save as GLB — binary glTF (Ctrl+S)" disabled>
             <sac-icon name="download"></sac-icon> GLB
         </button>
         <sac-menu class="s3-formats">

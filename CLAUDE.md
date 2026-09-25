@@ -53,8 +53,9 @@ Shared by the four apps that came out of DREAM TOOLS (vectorizer,
 background-remover, mesh-optimizer, svg-to-3d) — keep them identical.
 
 1. **Toolbar order:** Open (`btn`, icon `folder`, not primary) · main export
-   (`btn primary`, icon `download`, label = format; no `data-overflow` pin —
-   since kit 2.12 the ribbon folds a `sac-menu` as a group too) · further
+   (`btn primary`, icon `download`, label = format, pinned with
+   `data-overflow="never"` — the ribbon's overflow folds from the end, so an
+   unpinned primary would vanish into "…" on a phone while Open stays) · further
    formats in one `sac-menu` "More ▾" · Copy where it applies
    (`nav-icon-btn`) · app-specific icon buttons · Credits (`copyright`) · Help
    (`info`).
@@ -65,7 +66,8 @@ background-remover, mesh-optimizer, svg-to-3d) — keep them identical.
 4. **Empty state = `sac-drop-zone`** in `.app-drop`, styled by the shared
    `.app-drop` CSS block (identical in all four `app.css`; the zone carries
    the kit's `on-viewport` class, because the viewport is black in both
-   themes; clears the label row and the HUD). Its click / Enter go through `context.files.open`, not
+   themes, plus one opaque `--glass` line — the kit's glass is translucent
+   and the scene showed through; clears the label row and the HUD). Its click / Enter go through `context.files.open`, not
    the device picker.
 5. **Settings are remembered:** controls with `data-keep="key"` are saved to
    `context.fs` ("settings") and replayed on mount through their kit event.
