@@ -67,7 +67,8 @@ background-remover, mesh-optimizer, svg-to-3d) — keep them identical.
    `.app-drop` CSS block (identical in all four `app.css`; the zone carries
    the kit's `on-viewport` class, because the viewport is black in both
    themes, plus one opaque `--glass` line — the kit's glass is translucent
-   and the scene showed through; clears the label row and the HUD). Its click / Enter go through `context.files.open`, not
+   and the scene showed through; clears the label row and the HUD). Its
+   click / Enter go through `context.files.open`, not
    the device picker.
 5. **Settings are remembered:** controls with `data-keep="key"` are saved to
    `context.fs` ("settings") and replayed on mount through their kit event.
@@ -86,8 +87,8 @@ background-remover, mesh-optimizer, svg-to-3d) — keep them identical.
    ("Discard unsaved changes?"). Never the native `confirm()`.
 10. **Keyboard through `sac.hotkeys` only** — no raw keydown listeners for
     shortcuts; apps with more than Open/Save get a `keyboard` button and the
-    `?` key opening a `sac-shortcut-sheet`. Hold-keys (Space to pan) stay
-    manual until the kit supports them.
+    `?` key opening a `sac-shortcut-sheet`. Hold-keys (Space to pan) go
+    through `sac.hotkeys.hold` (kit ≥ 2.12).
 11. **Feedback is visible:** results and warnings go to `sac.toast`, work that
     blocks for more than a moment shows a busy overlay — never console only.
 12. **Kit controls with their limits:** `sac-stepper` only for short integers
@@ -133,10 +134,15 @@ Shared by the four apps that came out of DREAM TOOLS — keep identical.
 
 ## Open items
 
-Waiting on the appkit (reported 2026-09-25 — pick up when a release ships it,
-then re-vendor):
-- `sac-stepper` width for decimals → width, height, thickness, elevation,
-  outline width, layer gap become steppers.
+Appkit 2.12.0 closed most reported gaps (vendored 2026-09-25): collapsible
+`sac-section` (adopted: "Quality"), `.on-viewport`, `sac-menu` folding,
+`canvas.natural` (n/a here — the viewer sizes its own canvas) and
+`sac.hotkeys.hold` (n/a here — orbit controls, no Space-to-pan). Not adopted
+yet: runtime language switching (`sac.lang`, `sac.t()`).
+
+Still waiting on the appkit:
+- `sac-stepper` width for decimals (still 3ch in 2.12.0) → width, height,
+  thickness, elevation, outline width, layer gap become steppers.
 
 Owner decisions open:
 - **Accent colour:** own green vs following the desktop colour by default.
