@@ -53,9 +53,8 @@ Shared by the four apps that came out of DREAM TOOLS (vectorizer,
 background-remover, mesh-optimizer, svg-to-3d) — keep them identical.
 
 1. **Toolbar order:** Open (`btn`, icon `folder`, not primary) · main export
-   (`btn primary`, icon `download`, label = format, pinned with
-   `data-overflow="never"` — the ribbon's overflow folds buttons but never a
-   `sac-menu`, so an unpinned primary would vanish first on a phone) · further
+   (`btn primary`, icon `download`, label = format; no `data-overflow` pin —
+   since kit 2.12 the ribbon folds a `sac-menu` as a group too) · further
    formats in one `sac-menu` "More ▾" · Copy where it applies
    (`nav-icon-btn`) · app-specific icon buttons · Credits (`copyright`) · Help
    (`info`).
@@ -64,9 +63,9 @@ background-remover, mesh-optimizer, svg-to-3d) — keep them identical.
 3. **Credits via `sac.about`** from the manifest — the `notices` in `app.json`
    are what users see, keep them complete.
 4. **Empty state = `sac-drop-zone`** in `.app-drop`, styled by the shared
-   `.app-drop` CSS block (identical in all four `app.css`: ink and glass on
-   `--lift`, because the viewport is black in both themes; clears the label
-   row and the HUD). Its click / Enter go through `context.files.open`, not
+   `.app-drop` CSS block (identical in all four `app.css`; the zone carries
+   the kit's `on-viewport` class, because the viewport is black in both
+   themes; clears the label row and the HUD). Its click / Enter go through `context.files.open`, not
    the device picker.
 5. **Settings are remembered:** controls with `data-keep="key"` are saved to
    `context.fs` ("settings") and replayed on mount through their kit event.
@@ -134,10 +133,8 @@ Shared by the four apps that came out of DREAM TOOLS — keep identical.
 
 Waiting on the appkit (reported 2026-09-25 — pick up when a release ships it,
 then re-vendor):
-- Collapsible `sac-section` → make "Quality" collapsible.
 - `sac-stepper` width for decimals → width, height, thickness, elevation,
   outline width, layer gap become steppers.
-- `sac-menu` folding in the toolbar overflow → drop the GLB pin.
 
 Owner decisions open:
 - **Accent colour:** own green vs following the desktop colour by default.

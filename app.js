@@ -41,7 +41,7 @@
         <button type="button" class="btn s3-open" title="Open an SVG (Ctrl+O)">
             <sac-icon name="folder"></sac-icon> Open
         </button>
-        <button type="button" class="btn primary s3-glb" data-overflow="never" title="Save as GLB — binary glTF (Ctrl+S)" disabled>
+        <button type="button" class="btn primary s3-glb" title="Save as GLB — binary glTF (Ctrl+S)" disabled>
             <sac-icon name="download"></sac-icon> GLB
         </button>
         <sac-menu class="s3-formats">
@@ -92,7 +92,7 @@
                 <sac-toggle class="s3-center" label="Center at origin" checked data-keep="center"></sac-toggle>
             </sac-section>
 
-            <sac-section title="Quality">
+            <sac-section title="Quality" collapsible collapsed remember="svg-to-3d.quality">
                 <sac-slider class="s3-flat" label="Curve detail" min="0" max="4" step="1" value="2"
                             labels="Coarse,Low,Medium,High,Fine" data-keep="curveDetail"></sac-slider>
                 <sac-slider class="s3-red" label="Vertex reduction" min="0" max="4" step="1" value="0"
@@ -114,7 +114,7 @@
         <div class="viewport s3-view" slot="end">
             <div class="s3-canvas"></div>
             <div class="app-drop s3-empty">
-                <sac-drop-zone accept=".svg,image/svg+xml" label="Drop an SVG" hint="or click to open"
+                <sac-drop-zone class="on-viewport" accept=".svg,image/svg+xml" label="Drop an SVG" hint="or click to open"
                                touch-label="Open an SVG" touch-hint=""></sac-drop-zone>
             </div>
             <sac-hud class="s3-hud" position="bottom-left"></sac-hud>
