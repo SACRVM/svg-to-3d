@@ -63,10 +63,10 @@
         <div class="sidebar fill s3-panel" slot="start">
             <sac-section title="Size">
                 <div class="s3-grid">
-                    <div><label for="s3-w">Width</label><input id="s3-w" class="s3-w" type="number" step="0.1" min="0" value="1" data-keep="width"></div>
-                    <div><label for="s3-h">Height</label><input id="s3-h" class="s3-h" type="number" step="0.1" min="0" value=""></div>
-                    <div><label for="s3-t">Thickness</label><input id="s3-t" class="s3-t" type="number" step="0.01" min="0" value="0.1" data-keep="thickness"></div>
-                    <div><label for="s3-e">Elevation</label><input id="s3-e" class="s3-e" type="number" step="0.1" value="0" data-keep="elevation"></div>
+                    <div><label>Width</label><sac-stepper class="s3-w" label="Width" min="0.01" max="10000" step="0.01" value="1" data-keep="width"></sac-stepper></div>
+                    <div><label>Height</label><sac-stepper class="s3-h" label="Height" min="0.01" max="10000" step="0.01" value="1"></sac-stepper></div>
+                    <div><label>Thickness</label><sac-stepper class="s3-t" label="Thickness" min="0.001" max="1000" step="0.001" value="0.1" data-keep="thickness"></sac-stepper></div>
+                    <div><label>Elevation</label><sac-stepper class="s3-e" label="Elevation" min="-1000" max="1000" step="0.01" value="0" data-keep="elevation"></sac-stepper></div>
                 </div>
             </sac-section>
 
@@ -75,8 +75,8 @@
                 <sac-toggle class="s3-outline" label="Outline edges" data-keep="outline"></sac-toggle>
                 <div class="s3-outline-opts" hidden>
                     <div>
-                        <label for="s3-ow">Outline width</label>
-                        <input id="s3-ow" class="s3-ow" type="number" step="0.005" min="0.001" value="0.01" data-keep="outlineW">
+                        <label>Outline width</label>
+                        <sac-stepper class="s3-ow" label="Outline width" min="0.001" max="100" step="0.001" value="0.01" data-keep="outlineW"></sac-stepper>
                     </div>
                     <div>
                         <label>Outline align</label>
@@ -98,8 +98,8 @@
                 <sac-slider class="s3-red" label="Vertex reduction" min="0" max="4" step="1" value="0"
                             labels="Off,Light,Medium,Strong,Max" data-keep="reductionLevel"></sac-slider>
                 <div>
-                    <label for="s3-gap">Layer stacking (0 = auto)</label>
-                    <input id="s3-gap" class="s3-gap" type="number" step="0.001" min="0" value="0" data-keep="layerGap">
+                    <label>Layer stacking (0 = auto)</label>
+                    <sac-stepper class="s3-gap" label="Layer stacking" min="0" max="1" step="0.001" value="0" data-keep="layerGap"></sac-stepper>
                 </div>
             </sac-section>
 
@@ -251,9 +251,9 @@
 
             const rebuild = () => this._scheduleRebuild();
             // Width and height are one size: typing one derives the other from the aspect.
-            ui.w.addEventListener("input", () => { this._syncAspect("w"); rebuild(); });
-            ui.h.addEventListener("input", () => { this._syncAspect("h"); rebuild(); });
-            for (const el of [ui.t, ui.e, ui.ow, ui.gap]) el.addEventListener("input", rebuild);
+            this._on(ui.w, "sac:change", () => { this._syncAspect("w"); rebuild(); });
+            this._on(ui.h, "sac:change", () => { this._syncAspect("h"); rebuild(); });
+            for (const el of [ui.t, ui.e, ui.ow, ui.gap]) this._on(el, "sac:change", rebuild);
             this._on(ui.ry, "sac:change", rebuild);
             for (const el of [ui.fill, ui.upright, ui.center, ui.align]) this._on(el, "sac:change", rebuild);
             this._on(ui.outline, "sac:change", (v) => { ui.outlineOpts.hidden = !v; rebuild(); });
@@ -279,10 +279,10 @@
             if (!b || !b.w || !b.h) return;
             if (from === "w") {
                 const w = parseFloat(this.ui.w.value);
-                if (w > 0) this.ui.h.value = fmt(w * b.h / b.w);
+                if (w > 0) this.ui.h.value = w * b.h / b.w;
             } else {
                 const h = parseFloat(this.ui.h.value);
-                if (h > 0) this.ui.w.value = fmt(h * b.w / b.h);
+                if (h > 0) this.ui.w.value = h * b.w / b.h;
             }
         }
 
@@ -317,7 +317,6 @@
         async _load(svgText, name) {
             this._svg = svgText;
             this._name = name || "model";
-            if (!(parseFloat(this.ui.w.value) > 0)) this.ui.w.value = "1";
             await this._reparse({ reframe: true, fitHeight: true });
         }
 
@@ -470,6 +469,11 @@
             if ("reduction" in out && !("reductionLevel" in out)) out.reductionLevel = nearest(REDUCTION_TOL, parseFloat(out.reduction) || 0);
             if ("rotateY" in out) out.rotateY = ((Math.round((parseFloat(out.rotateY) || 0) / 5) * 5) % 360 + 360) % 360;
             delete out.flatness; delete out.reduction; delete out.outlineWidth;
+            // Sizes from the number inputs of 1.4.x and earlier could be empty; a stepper
+            // would clamp "" to its minimum, so those fall back to the default.
+            for (const k of ["width", "thickness", "elevation", "outlineW", "layerGap"]) {
+                if (k in out && !Number.isFinite(parseFloat(out[k]))) delete out[k];
+            }
             return out;
         }
 

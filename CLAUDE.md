@@ -91,8 +91,10 @@ background-remover, mesh-optimizer, svg-to-3d) — keep them identical.
     through `sac.hotkeys.hold` (kit ≥ 2.12).
 11. **Feedback is visible:** results and warnings go to `sac.toast`, work that
     blocks for more than a moment shows a busy overlay — never console only.
-12. **Kit controls with their limits:** `sac-stepper` only for short integers
-    (its value field is 3ch wide); decimals stay kit-styled number inputs.
+12. **Kit controls with their limits:** `sac-stepper` for numbers, decimals
+    included (kit ≥ 2.12.1 sizes its field to the widest value of min/max) —
+    keep `min`/`max` tight so the pill fits a half-width panel column; it
+    snaps every value to its `step` grid.
     Slider readouts carry a unit or named steps, never a bare technical number.
 13. **Theme toggle** (`sac-theme-toggle` in the nav's `context` slot) only
     standalone — removed when `context.host` is set.
@@ -139,10 +141,8 @@ Appkit 2.12.0 closed most reported gaps (vendored 2026-09-25): collapsible
 `canvas.natural` (n/a here — the viewer sizes its own canvas) and
 `sac.hotkeys.hold` (n/a here — orbit controls, no Space-to-pan). Not adopted
 yet: runtime language switching (`sac.lang`, `sac.t()`).
-
-Still waiting on the appkit:
-- `sac-stepper` width for decimals (still 3ch in 2.12.0) → width, height,
-  thickness, elevation, outline width, layer gap become steppers.
+Kit 2.12.1 sized the stepper for decimals: width, height, thickness,
+elevation, outline width and layer gap are steppers now.
 
 Owner decisions open:
 - **Accent colour:** own green vs following the desktop colour by default.
