@@ -23,7 +23,10 @@ app-svg-to-3d .s3-outline-opts[hidden] { display: none; }
 
 /* ---- viewport ---- */
 app-svg-to-3d .s3-view { width: 100%; height: 100%; min-height: 0; }
-app-svg-to-3d .s3-canvas { position: absolute; inset: 0; }
+/* A finger on the preview orbits: no browser panning, and the kit's drawer
+   and split swipes leave it alone (kit 2.33.1 — they skip touch-action:
+   none). OrbitControls sets the same on its canvas; this holds regardless. */
+app-svg-to-3d .s3-canvas { position: absolute; inset: 0; touch-action: none; }
 app-svg-to-3d .s3-view:not(.has-model) .s3-canvas { visibility: hidden; }
 /* ---- empty state: the shared .app-drop block (same in all four DREAM
    TOOLS-born apps — keep it identical). The zone carries class
@@ -70,6 +73,15 @@ app-svg-to-3d .s3-busy {
     padding: 6px 12px;
     border-radius: 999px;
     backdrop-filter: blur(6px);
+}
+/* Solid, like the kit's own glass, where less transparency or more contrast
+   is asked for (kit 2.33; the fallback covers an older host kit). */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+    app-svg-to-3d .s3-busy {
+        background: var(--glass-solid, var(--surface));
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+    }
 }
 
 app-svg-to-3d .s3-help { padding: 16px; font-size: 0.85rem; line-height: 1.6; }

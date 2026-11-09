@@ -111,7 +111,7 @@
             </sac-section>
         </div>
 
-        <div class="viewport s3-view" slot="end">
+        <div class="viewport s3-view" slot="end" data-no-long-press>
             <div class="s3-canvas"></div>
             <div class="app-drop s3-empty">
                 <sac-drop-zone class="on-viewport" accept=".svg,image/svg+xml" label="Drop an SVG" hint="or click to open"
@@ -488,6 +488,10 @@
         _wireDropZone(onFile) {
             const wrap = this.querySelector(".app-drop");
             const zone = wrap.querySelector("sac-drop-zone");
+            // The toast below is the one message about files not taken, so the zone
+            // keeps its own line back (kit ≥ 2.36): it hides as soon as a file opens,
+            // and a partial drop's line would sit unseen under the loaded image.
+            zone.toggleAttribute("quiet", true);
             // Click / Enter / Space open through context.files, like the Open button.
             const intercept = (e) => {
                 if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
@@ -499,7 +503,21 @@
             wrap.addEventListener("click", intercept, true);
             wrap.addEventListener("keydown", intercept, true);
             zone.addEventListener("sac:files", (e) => { const f = e.detail.files[0]; if (f) onFile(f); });
-            zone.addEventListener("sac:rejected", () => sac.toast?.("That file type does not open here.", { kind: "warn" }));
+            zone.addEventListener("sac:rejected", (e) => {
+                // Kit ≥ 2.36 pairs each file with a reason and fires for partial drops
+                // too; an older host kit sends bare files, only when none was taken.
+                const d = e.detail || {};
+                const list = d.rejected || (d.files || []).map((file) => ({ file, reason: "type" }));
+                const byType = list.filter((r) => r.reason === "type").map((r) => r.file.name);
+                const byCount = list.filter((r) => r.reason === "count").map((r) => r.file.name);
+                const lines = [];
+                if (byType.length) lines.push(byType.length === 1
+                    ? `${byType[0]} does not open here.` : `${byType.length} files do not open here.`);
+                if (byCount.length) lines.push(byCount.length === 1
+                    ? `One file at a time — ${byCount[0]} was not opened.`
+                    : `One file at a time — ${byCount.length} files were not opened.`);
+                if (lines.length) sac.toast?.(lines.join(" "), { kind: "warn" });
+            });
         }
 
         /** Ctrl+O / Ctrl+S — only while the app is on screen. */

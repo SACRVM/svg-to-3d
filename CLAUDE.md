@@ -19,8 +19,8 @@ as the standalone harness, and `kit/` — the vendored kit. One addition:
 `engine.js`, an ES module that `app.js` imports on mount (parsing, extrusion,
 viewer, exporters).
 
-- **No build step, ever.** Vanilla custom elements, plain CSS, `npx serve .`
-  and F5.
+- **No build step, ever.** Vanilla custom elements, plain CSS, a static
+  server and F5.
 - **The kit is vendored** (autark): `kit/` is the release ZIP's copy,
   verbatim — `kit/VERSION` says which — and never edited here. To upgrade,
   delete `kit/` and unzip the next release (see the appkit's `CONSUMING.md`).
@@ -68,8 +68,11 @@ background-remover, mesh-optimizer, svg-to-3d) — keep them identical.
    the kit's `on-viewport` class, because the viewport is black in both
    themes, plus one opaque `--glass` line — the kit's glass is translucent
    and the scene showed through; clears the label row and the HUD). Its
-   click / Enter go through `context.files.open`, not
-   the device picker.
+   click / Enter go through `context.files.open`, not the device picker.
+   The zone is `quiet` (kit ≥ 2.36): files it did not take get one toast
+   from the `_wireDropZone` snippet, built from `sac:rejected`'s
+   `detail.rejected` — the zone hides once a file opens, so its own line
+   would go unseen after a partial drop.
 5. **Settings are remembered:** controls with `data-keep="key"` are saved to
    `context.fs` ("settings") and replayed on mount through their kit event.
    Per-document values (e.g. a threshold fitted to one image) are not kept.
@@ -108,8 +111,9 @@ background-remover, mesh-optimizer, svg-to-3d) — keep them identical.
 
 Shared by the four apps that came out of DREAM TOOLS — keep identical.
 
-- **Dev loop:** `npx serve . -l 3344` (Firepit command "Serve"), F5. `serve.json`
-  disables caching.
+- **Dev loop:** `python3 -m http.server 3344` (Firepit command "Run site"),
+  F5. `npx serve . -l 3344` works too and reads `serve.json`, which disables
+  caching.
 - **Test both runtimes — they fail differently.** Standalone (`index.html`,
   vendored kit) AND installed on https://desktop.sacrvm.dev/ (the host's kit
   is live there; the app is injected into the host page). Recipe and a
@@ -143,6 +147,21 @@ Appkit 2.12.0 closed most reported gaps (vendored 2026-09-25): collapsible
 yet: runtime language switching (`sac.lang`, `sac.t()`).
 Kit 2.12.1 sized the stepper for decimals: width, height, thickness,
 elevation, outline width and layer gap are steppers now.
+
+Kit 2.36.0 is vendored (2026-11-09; before that 2.12.1). Taken up from the
+releases in between: the quiet drop zone with one toast per `sac:rejected`
+(2.36), a solid busy pill under reduced transparency / more contrast
+(2.33), `touch-action: none` on the 3D canvas so drawer and split swipes
+leave it alone (2.33.1), `data-no-long-press` on the viewport so a held
+finger orbits instead of firing `contextmenu` (2.29). Checked and n/a here:
+`sac-log`, `sac-loader` (the busy pill is the app's own), `sac-dialog`
+(none), `sac-number-field` (the sizes are steppers), `sac-file-browser`,
+explicit toast durations (only the sticky engine-load error).
+
+Version skew: hosted on the desktop the app runs on the host's kit, so the
+2.36 behaviour (quiet zone, `detail.rejected`) appears only once
+`sacrvm-desktop` re-vendors. The snippet falls back to the bare `files`
+list of an older kit.
 
 Owner decisions open:
 - **Accent colour:** own green vs following the desktop colour by default.
