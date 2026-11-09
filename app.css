@@ -13,11 +13,17 @@ app-svg-to-3d .s3-split { flex: 1; min-width: 0; min-height: 0; }
 /* The split's divider draws the edge — no second hairline from the sidebar. */
 app-svg-to-3d .s3-panel:not([open]) { border-right: none; }
 
+/* Size: two steppers per row where two fit, one per row where they don't
+   (the 240px minimum panel, the phone drawer). A stepper never shrinks
+   below its pill (its min-content, sized by the kit from min/max), so a
+   row wraps instead of running out of the panel; a 40% basis caps a row
+   at two, also in a very wide panel. */
 app-svg-to-3d .s3-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.6rem;
 }
+app-svg-to-3d .s3-grid > div { flex: 1 1 40%; }
 app-svg-to-3d .s3-outline-opts { display: flex; flex-direction: column; gap: 0.75rem; }
 app-svg-to-3d .s3-outline-opts[hidden] { display: none; }
 
