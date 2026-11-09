@@ -7,7 +7,7 @@
     "kind": "view",
     "tag": "app-svg-to-3d",
     "entry": "app.js",
-    "version": "1.5.1",
+    "version": "1.5.2",
     "notices": [
         {
             "title": "Three.js",

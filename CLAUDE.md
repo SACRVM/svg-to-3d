@@ -148,20 +148,22 @@ yet: runtime language switching (`sac.lang`, `sac.t()`).
 Kit 2.12.1 sized the stepper for decimals: width, height, thickness,
 elevation, outline width and layer gap are steppers now.
 
-Kit 2.36.0 is vendored (2026-11-09; before that 2.12.1). Taken up from the
-releases in between: the quiet drop zone with one toast per `sac:rejected`
-(2.36), a solid busy pill under reduced transparency / more contrast
+Kit 2.37.0 is vendored (2026-11-09; 2.36.0 earlier that day, 2.12.1
+before). Taken up from the releases since 2.12.1: the quiet drop zone
+with one toast per `sac:rejected` (2.36), a solid busy pill under reduced transparency / more contrast
 (2.33), `touch-action: none` on the 3D canvas so drawer and split swipes
 leave it alone (2.33.1), `data-no-long-press` on the viewport so a held
 finger orbits instead of firing `contextmenu` (2.29). Checked and n/a here:
 `sac-log`, `sac-loader` (the busy pill is the app's own), `sac-dialog`
 (none), `sac-number-field` (the sizes are steppers), `sac-file-browser`,
-explicit toast durations (only the sticky engine-load error).
+explicit toast durations (only the sticky engine-load error),
+`--split-back-height` (2.37; no sticky content in the panels). 2.36.2
+needs no change: `data-no-long-press` now also drops the browser's own
+long-press menu on the viewport.
 
-Version skew: hosted on the desktop the app runs on the host's kit, so the
-2.36 behaviour (quiet zone, `detail.rejected`) appears only once
-`sacrvm-desktop` re-vendors. The snippet falls back to the bare `files`
-list of an older kit.
+Version skew: hosted on the desktop the app runs on the host's kit
+(desktop.sacrvm.dev is on 2.37.0 too). The drop-zone snippet falls back
+to the bare `files` list of a pre-2.36 kit.
 
 Owner decisions open:
 - **Accent colour:** own green vs following the desktop colour by default.
